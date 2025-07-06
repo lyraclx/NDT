@@ -52,7 +52,6 @@ def get_isp_info() -> Dict[str, Optional[str]]:
         with urlopen("https://ipinfo.io/json") as response:
             data = json.load(response)
             return {
-                "hostname": data.get("hostname"),
                 "city": data.get("city"),
                 "region": data.get("region"),
                 "country": data.get("country"),
@@ -62,7 +61,6 @@ def get_isp_info() -> Dict[str, Optional[str]]:
     except Exception as e:
         print(f"{RED}[x]{RESET} Failed to fetch ISP info: {e}")
         return {
-            "hostname": None,
             "city": None,
             "region": None,
             "country": None,
