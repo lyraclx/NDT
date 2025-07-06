@@ -24,3 +24,5 @@ Start program
 ```bash
   python main.py
 ```
+## Privacy Notice
+All logs remain on your local device unless you choose to share them.
