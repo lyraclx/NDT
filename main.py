@@ -269,16 +269,14 @@ def main() -> None:
             "traceroutes": {},
         }
 
-        raw_traceroutes: Dict[str, str] = {}  # Hold raw traceroute outputs
+        raw_traceroutes: Dict[str, str] = {}
 
         gateway = get_default_gateway()
         if not gateway:
             raise RuntimeError("Default gateway not found.")
 
-        # Analyze default gateway
         diagnostics["default_gateway_analysis"] = analyze_ping(gateway, count=120, threaded=False)
 
-        # Run traceroutes and ping hops in parallel threads
         for idx, ip in enumerate(region_ips):
             label = f"{region_name}-{chr(97 + idx)}" if len(region_ips) > 1 else region_name
             tr_output = run_traceroute(ip)
@@ -286,7 +284,6 @@ def main() -> None:
 
             hops = parse_traceroute_output(tr_output)
 
-            # Thread worker to ping one hop sequentially 60 times
             def ping_hop_worker(hop):
                 if hop.get("timeout"):
                     hop["ping_stats"] = None
@@ -312,7 +309,6 @@ def main() -> None:
         stop_event.set()
         spinner_thread.join()
 
-    # Save results as before
     zip_filename = Path(f"diagnostics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
     with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
         for label, tr_output in raw_traceroutes.items():
@@ -324,7 +320,6 @@ def main() -> None:
         zipf.writestr("diagnostics.yaml", diagnostics_yaml)
 
     print(f"\n{GREEN}[+]{RESET} Diagnostics completed and saved to {zip_filename}")
-
 
 if __name__ == "__main__":
     main()
