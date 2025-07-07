@@ -3,11 +3,13 @@ import sys
 import time
 import yaml
 import json
+import socket
+import ctypes
+import socket
 import zipfile
 import platform
 import threading
 import itertools
-import netifaces
 import subprocess
 from pathlib import Path
 from urllib.request import urlopen
@@ -39,12 +41,48 @@ def fetch_regions() -> Dict[str, List[str]]:
 
 
 def get_default_gateway() -> Optional[str]:
-    try:
-        gateways = netifaces.gateways()
-        return gateways["default"][netifaces.AF_INET][0]
-    except Exception as e:
-        print(f"{RED}[x]{RESET} Error getting default gateway: {e}")
+    class MIB_IPFORWARDROW(ctypes.Structure):
+        _fields_ = [
+            ("dwForwardDest", ctypes.c_ulong),
+            ("dwForwardMask", ctypes.c_ulong),
+            ("dwForwardPolicy", ctypes.c_ulong),
+            ("dwForwardNextHop", ctypes.c_ulong),
+            ("dwForwardIfIndex", ctypes.c_ulong),
+            ("dwForwardType", ctypes.c_ulong),
+            ("dwForwardProto", ctypes.c_ulong),
+            ("dwForwardAge", ctypes.c_ulong),
+            ("dwForwardNextHopAS", ctypes.c_ulong),
+            ("dwForwardMetric1", ctypes.c_ulong),
+            ("dwForwardMetric2", ctypes.c_ulong),
+            ("dwForwardMetric3", ctypes.c_ulong),
+            ("dwForwardMetric4", ctypes.c_ulong),
+            ("dwForwardMetric5", ctypes.c_ulong),
+        ]
+
+    class MIB_IPFORWARDTABLE(ctypes.Structure):
+        _fields_ = [
+            ("dwNumEntries", ctypes.c_ulong),
+            ("table", MIB_IPFORWARDROW * 256),
+        ]
+
+    GetIpForwardTable = ctypes.windll.iphlpapi.GetIpForwardTable
+    GetIpForwardTable.argtypes = [ctypes.POINTER(MIB_IPFORWARDTABLE), ctypes.POINTER(ctypes.c_ulong), ctypes.c_bool]
+    GetIpForwardTable.restype = ctypes.c_ulong
+
+    table = MIB_IPFORWARDTABLE()
+    size = ctypes.c_ulong(ctypes.sizeof(table))
+
+    result = GetIpForwardTable(ctypes.byref(table), ctypes.byref(size), False)
+    if result != 0:
         return None
+
+    for i in range(table.dwNumEntries):
+        row = table.table[i]
+        if row.dwForwardDest == 0:
+            ip_bytes = row.dwForwardNextHop.to_bytes(4, 'little')
+            return socket.inet_ntoa(ip_bytes)
+
+    return None
 
 
 def get_isp_info() -> Dict[str, Optional[str]]:
