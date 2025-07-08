@@ -249,7 +249,7 @@ def save_raw_traceroute(label: str, ip: str, raw_output: str) -> None:
     print(f"{GREEN}[+]{RESET} Raw traceroute saved to: {filename}")
 
 def analyze_ping_sequential(address: str, count: int, delay: float = 1) -> Dict[str, Any]:
-    """Ping an address sequentially 'count' times with 'delay' between pings."""
+    """Ping an address sequentially 'count' times with 'delay' between pings. Sigh its 2:30am i need monster"""
     results = []
     for _ in range(count):
         output = run_ping(address, count=1)
@@ -270,6 +270,9 @@ def analyze_ping_sequential(address: str, count: int, delay: float = 1) -> Dict[
         "avg_rtt": sum(rtts) / total_received if total_received else None,
         "jitter": jitter,
     }
+
+def analyze_gateway(diagnostics: dict, gateway: str) -> None:
+    diagnostics["default_gateway_analysis"] = analyze_ping(gateway, count=120, threaded=False)
 
 def main() -> None:
     regions = fetch_regions()
@@ -313,7 +316,8 @@ def main() -> None:
         if not gateway:
             raise RuntimeError("Default gateway not found.")
 
-        diagnostics["default_gateway_analysis"] = analyze_ping(gateway, count=120, threaded=False)
+        gateway_thread = threading.Thread(target=analyze_gateway, args=(diagnostics, gateway))
+        gateway_thread.start()
 
         for idx, ip in enumerate(region_ips):
             label = f"{region_name}-{chr(97 + idx)}" if len(region_ips) > 1 else region_name
